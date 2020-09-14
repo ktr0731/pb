@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/jsonpb" //nolint:staticcheck
+	"github.com/golang/protobuf/proto"  //nolint:staticcheck
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/desc/protoparse"
 	"github.com/jhump/protoreflect/dynamic/msgregistry"
