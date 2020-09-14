@@ -34,7 +34,7 @@ var (
 )
 
 func main() {
-	rootCmd.AddCommand(lsCmd, newDecodeCommand())
+	rootCmd.AddCommand(lsCmd, newEncodeCommand(), newDecodeCommand())
 	rootCmd.PersistentFlags().StringSliceVarP(&importPaths, "proto_path", "I", nil, "import paths")
 	rootCmd.PersistentFlags().StringSliceVarP(&importFiles, "proto_file", "F", nil, "import files")
 	if err := rootCmd.Execute(); err != nil {
@@ -99,10 +99,44 @@ func list(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func newEncodeCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "encode <message>",
+		Short: "encode a JSON string",
+		RunE:  encode,
+	}
+	return cmd
+}
+
+func encode(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return errors.New(`specify fully-qualified message name`)
+	}
+
+	msg, err := msgReg.Resolve(args[0])
+	if err != nil {
+		return errors.Wrap(err, "failed to resolve message")
+	}
+
+	if err := jsonpb.Unmarshal(os.Stdin, msg); err != nil {
+		return errors.Wrap(err, "failed to unmarshal message")
+	}
+
+	out, err := proto.Marshal(msg)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal message")
+	}
+	if _, err := os.Stdout.Write(out); err != nil {
+		return errors.Wrap(err, "failed to write encoded message")
+	}
+
+	return nil
+}
+
 func newDecodeCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "decode <message>",
-		Short: "decode base64-encoded input as a JSON string",
+		Short: "decode base64-encoded input into a JSON string",
 		RunE:  decode,
 	}
 	cmd.Flags().String("in", "bin", `input type. "bin" or "base64".`)
