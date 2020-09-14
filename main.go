@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/jsonpb" //nolint:staticcheck
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/desc/protoparse"
@@ -27,15 +31,10 @@ var (
 		Short: "list loaded top-level descriptors",
 		RunE:  list,
 	}
-	decodeCmd = &cobra.Command{
-		Use:   "decode <message>",
-		Short: "decode input as a JSON string",
-		RunE:  decode,
-	}
 )
 
 func main() {
-	rootCmd.AddCommand(lsCmd, decodeCmd)
+	rootCmd.AddCommand(lsCmd, newDecodeCommand())
 	rootCmd.PersistentFlags().StringSliceVarP(&importPaths, "proto_path", "I", nil, "import paths")
 	rootCmd.PersistentFlags().StringSliceVarP(&importFiles, "proto_file", "F", nil, "import files")
 	if err := rootCmd.Execute(); err != nil {
@@ -100,6 +99,16 @@ func list(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func newDecodeCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "decode <message>",
+		Short: "decode base64-encoded input as a JSON string",
+		RunE:  decode,
+	}
+	cmd.Flags().String("in", "bin", `input type. "bin" or "base64".`)
+	return cmd
+}
+
 func decode(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return errors.New(`specify fully-qualified message name`)
@@ -110,7 +119,16 @@ func decode(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(err, "failed to resolve message")
 	}
 
-	if err := jsonpb.Unmarshal(os.Stdin, msg); err != nil {
+	var r io.Reader = os.Stdin
+	if t, _ := cmd.Flags().GetString("in"); t == "base64" {
+		r = base64.NewDecoder(base64.StdEncoding, r)
+	}
+
+	in, err := ioutil.ReadAll(r)
+	if err != nil {
+		return errors.Wrap(err, "failed to read base64-encoded input from stdin")
+	}
+	if err := proto.Unmarshal(in, msg); err != nil {
 		return errors.Wrap(err, "failed to unmarshal message")
 	}
 

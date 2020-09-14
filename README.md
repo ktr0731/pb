@@ -7,7 +7,7 @@ $ pb -F example/helloworld/helloworld.proto ls messages
 helloworld.HelloRequest
 helloworld.HelloReply
 
-$ echo '{"name": "ktr"}' | pb -F example/helloworld/helloworld.proto decode helloworld.HelloRequest
+$ echo 'CgNrdHI=' | pb -F example/helloworld/helloworld.proto decode --in base64 helloworld.HelloRequest
 {
   "name": "ktr"
 }
